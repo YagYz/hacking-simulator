@@ -1,0 +1,98 @@
+{
+    "gorevler": [
+        {
+            "id": "M-001",
+            "baslik": "İlk Test: Mahalle Bakkalının Ağı",
+            "veren_kisi": "Anonim_Rehber",
+            "hikaye": "Aramıza hoş geldin YagYz. Hedefteki küçük bir işletmenin ağında hangi cihazların açık olduğunu bilmek istiyorum. Sadece port taraması yap.",
+            "min_level": 1,
+            "hedef_ip": "192.168.2.44",
+            "acik_portlar": ["80", "445"],
+            "korumali_portlar": [],
+            "zafiyetler": {},
+            "istenen_eylem": "tarama_yapildi",
+            "odul": 500,
+            "xp": 30
+        },
+        {
+            "id": "M-002",
+            "baslik": "Acemi Hırsızı Yakala",
+            "veren_kisi": "Cyber_Guard_Ltd",
+            "hikaye": "Eski bir çalışanımız şirket sunucusuna backdoor kurup kaçtı. Hedef sunucunun 22 (SSH) portundaki eski bir zafiyeti (CVE-2001-0144) kullanarak içeri gir.",
+            "min_level": 1,
+            "hedef_ip": "10.0.1.15",
+            "acik_portlar": ["22", "80"],
+            "korumali_portlar": ["22"],
+            "zafiyetler": {"22": "CVE-2001-0144"},
+            "kullanici_adi": "admin",
+            "sifre": "root123",
+            "istenen_eylem": "sizma_basarili",
+            "odul": 1200,
+            "xp": 80
+        },
+        {
+            "id": "M-003",
+            "baslik": "Karanlık Veri Hırsızlığı",
+            "veren_kisi": "ShadowBroker",
+            "hikaye": "Rakip firmanın yerel sunucusuna sız. Apache sunucusundaki zafiyeti bulup exploit et. /var/www/html dizinindeki 'db_backup.sql' yedeğini indir.",
+            "min_level": 2,
+            "hedef_ip": "172.16.0.50",
+            "acik_portlar": ["80", "443"],
+            "korumali_portlar": ["443"],
+            "zafiyetler": {"80": "CVE-2021-41773"},
+            "kullanici_adi": "root",
+            "sifre": "toor",
+            "istenen_eylem": "dosya_indirildi",
+            "istenen_dosya": "db_backup.sql",
+            "dosya_sistemi": {
+                "/": ["bin", "etc", "var", "home"],
+                "/var": ["log", "www"],
+                "/var/log": ["auth.log"],
+                "/var/www": ["html"],
+                "/var/www/html": ["index.html", "db_backup.sql"]
+            },
+            "odul": 3500,
+            "xp": 150
+        },
+        {
+            "id": "M-004",
+            "baslik": "Hayalet İstihbarat",
+            "veren_kisi": "Kripto_Baronu",
+            "hikaye": "Yasadışı bir offshore bankasının veritabanı sunucusuna sızmamız lazım. 3306 (MySQL) portunda yetki yükseltme zafiyeti (CVE-2016-6662) olduğunu duyduk. Sisteme gir, '/home/kasa' dizinindeki 'cuzdan_anahtarlari.txt' dosyasını al.",
+            "min_level": 3,
+            "hedef_ip": "10.99.0.5",
+            "acik_portlar": ["22", "80", "3306"],
+            "korumali_portlar": ["22", "80"],
+            "zafiyetler": {"3306": "CVE-2016-6662"},
+            "kullanici_adi": "db_admin",
+            "sifre": "admin_pass_99",
+            "istenen_eylem": "dosya_indirildi",
+            "istenen_dosya": "cuzdan_anahtarlari.txt",
+            "dosya_sistemi": {
+                "/": ["bin", "var", "home"],
+                "/home": ["kasa", "db_admin"],
+                "/home/kasa": ["cuzdan_anahtarlari.txt", "islem_gecmisi.log"],
+                "/var": ["log"],
+                "/var/log": ["auth.log", "mysql.log"]
+            },
+            "odul": 8500,
+            "xp": 250
+        },
+        {
+            "id": "M-005",
+            "baslik": "Sessiz Sabotaj",
+            "veren_kisi": "Ghost_Syndicate",
+            "hikaye": "Devlet destekli bir taşeron firmanın iç ağındayız. Hedefteki dosya sunucusunun 445 (SMB) portundaki zafiyeti (CVE-2017-0144 - EternalBlue) sömür. Görevin sadece sisteme sızıp kapıları bize açmak. Dosya indirmene gerek yok.",
+            "min_level": 4,
+            "hedef_ip": "192.168.100.100",
+            "acik_portlar": ["139", "445"],
+            "korumali_portlar": ["139"],
+            "zafiyetler": {"445": "CVE-2017-0144"},
+            "kullanici_adi": "administrator",
+            "sifre": "P@ssw0rd123",
+            "istenen_eylem": "sizma_basarili",
+            "odul": 15000,
+            "xp": 400
+        }
+    ]
+}

@@ -1,16 +1,84 @@
 import socket
 import threading
 import time
+import os
+import json
+from pathlib import Path
 from rich.live import Live
 from rich.layout import Layout
 from rich.panel import Panel
 from rich.align import Align
 
-logs = ["[*] Sistem başlatıldı...", "[*] Ağ dinleniyor, bağlantı bekleniyor..."]
-stats = {"bakiye": 0, "level": 1, "cpu_load": "12%"}
+# Modern ve Güvenli Yol Tanımlamaları
+BASE_DIR = Path(__file__).resolve().parent.parent
+JSON_YOLU = BASE_DIR / 'data' / 'missions.json'
+SAVE_YOLU = BASE_DIR / 'data' / 'savegame.json'
+
+def json_oku():
+    try:
+        with open(JSON_YOLU, 'r', encoding='utf-8') as f:
+            return json.load(f)["gorevler"]
+    except FileNotFoundError:
+        return []
+
+hedefler = json_oku()
+logs = ["[*] YagYz C2 Ana Sistemi başlatıldı...", "[*] Şifreli ağ dinleniyor, ajanlardan bağlantı bekleniyor..."]
+
+# --- SAVE / LOAD SİSTEMİ ---
+def oyunu_yukle():
+    if SAVE_YOLU.exists():
+        try:
+            with open(SAVE_YOLU, 'r', encoding='utf-8') as f:
+                kayit = json.load(f)
+                logs.append("[bold green][+] YagYz Ajan Profili diskten başarıyla yüklendi.[/bold green]")
+                return kayit.get("stats", {"bakiye": 0, "level": 1, "xp": 0, "cpu_load": "12%"}), kayit.get("tamamlanan_gorevler", [])
+        except: pass
+    logs.append("[bold yellow][*] Yeni profil oluşturuldu. Kayıt dosyası bulunamadı.[/bold yellow]")
+    return {"bakiye": 0, "level": 1, "xp": 0, "cpu_load": "12%"}, []
+
+stats, tamamlanan_gorevler = oyunu_yukle()
+
+def oyunu_kaydet():
+    kayit = {"stats": stats, "tamamlanan_gorevler": tamamlanan_gorevler}
+    with open(SAVE_YOLU, 'w', encoding='utf-8') as f:
+        json.dump(kayit, f, indent=4)
+# ---------------------------------
+
+def ekrani_temizle():
+    os.system('clear')
+
+def gorev_tamamla(hedef_ip, eylem, ekstra_bilgi=None):
+    hedef_data = next((h for h in hedefler if h.get("hedef_ip") == hedef_ip), None)
+    if not hedef_data: return
+    
+    gorev_id = hedef_data["id"]
+    if gorev_id in tamamlanan_gorevler: return 
+        
+    if stats["level"] < hedef_data.get("min_level", 1): return
+        
+    istenen_eylem = hedef_data.get("istenen_eylem")
+    istenen_dosya = hedef_data.get("istenen_dosya")
+    
+    basarili = False
+    if eylem == "TARAMA_YAPILDI" and istenen_eylem == "tarama_yapildi": basarili = True
+    elif eylem == "SIZMA_BASARILI" and istenen_eylem == "sizma_basarili": basarili = True
+    elif eylem == "DOSYA_INDIRILDI" and istenen_eylem == "dosya_indirildi":
+        if ekstra_bilgi == istenen_dosya: basarili = True
+            
+    if basarili:
+        stats["bakiye"] += hedef_data["odul"]
+        stats["xp"] += hedef_data["xp"]
+        tamamlanan_gorevler.append(gorev_id)
+        logs.append(f"[bold green][+] GÖREV BAŞARILI ({gorev_id}): Kripto cüzdana ${hedef_data['odul']} aktarıldı![/bold green]")
+        
+        if stats["xp"] >= 100:
+            stats["level"] += 1
+            stats["xp"] = 0 
+            logs.append(f"[bold magenta][!] LEVEL UP! Artık Seviye {stats['level']} oldun. DarkNet'te yeni işler açıldı.[/bold magenta]")
+            
+        oyunu_kaydet()
 
 def socket_dinleyici():
-    """Arka planda çalışıp client'tan gelen komutları yakalayan fonksiyon"""
     host = '127.0.0.1'
     port = 5555
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -18,19 +86,39 @@ def socket_dinleyici():
     server_socket.listen(1)
     
     conn, addr = server_socket.accept()
-    logs.append(f"[bold green][+] Bağlantı sağlandı:[/bold green] {addr}")
+    logs.append(f"[bold green][+] Şifreli Tünel Açıldı. Ajan Bağlandı:[/bold green] {addr}")
     
     while True:
         try:
             data = conn.recv(1024).decode('utf-8')
-            if not data:
-                break
+            if not data: break
             
-            logs.append(f"[bold cyan]root@kali:~#[/bold cyan] {data}")
+            if not any(data.startswith(s) for s in ["SIZMA", "TARAMA", "FIREWALL", "DOSYA"]):
+                logs.append(f"[bold cyan]root@yagyz:~#[/bold cyan] {data}")
             
-            if data == "hack localhost":
-                logs.append("[bold yellow][!] Sızma başarılı! Hesaba +500$ eklendi.[/bold yellow]")
-                stats["bakiye"] += 500
+            # --- YENİ TEMAYA UYGUN LOG GÜNCELLEMELERİ ---
+            if data.startswith("TARAMA_YAPILDI"):
+                hedef_ip = data.split()[1]
+                logs.append(f"[bold yellow][*] İSTİHBARAT: {hedef_ip} ağ haritası ve port analizi tamamlandı.[/bold yellow]")
+                gorev_tamamla(hedef_ip, "TARAMA_YAPILDI")
+                
+            elif data.startswith("FIREWALL_BYPASS"):
+                parcalar = data.split()
+                hedef_ip, hedef_port = parcalar[1], parcalar[2]
+                logs.append(f"[bold magenta][!] WAF ÇÖKÜŞÜ: {hedef_ip}:{hedef_port} üzerindeki güvenlik duvarı aşıldı![/bold magenta]")
+
+            elif data.startswith("SIZMA_BASARILI"):
+                hedef_ip = data.split()[1]
+                # Log mesajı "Crack" yerine "Exploit/Zafiyet" temasına uygun hale getirildi
+                logs.append(f"[bold yellow][*] EXPLOIT BAŞARILI: {hedef_ip} sistemindeki zafiyet sömürüldü, root erişimi sağlandı.[/bold yellow]")
+                gorev_tamamla(hedef_ip, "SIZMA_BASARILI")
+                
+            elif data.startswith("DOSYA_INDIRILDI"):
+                parcalar = data.split()
+                hedef_ip, dosya_adi = parcalar[1], parcalar[2]
+                logs.append(f"[bold cyan][+] VERİ SIZINTISI: {hedef_ip} sunucusundan '{dosya_adi}' başarıyla çekildi.[/bold cyan]")
+                gorev_tamamla(hedef_ip, "DOSYA_INDIRILDI", ekstra_bilgi=dosya_adi)
+
             elif data == "clear":
                 logs.clear()
                 
@@ -38,53 +126,48 @@ def socket_dinleyici():
                 logs.pop(0)
                 
         except Exception as e:
-            logs.append(f"[bold red]Hata:[/bold red] {e}")
+            logs.append(f"[bold red]Bağlantı koptu:[/bold red] {e}")
             break
-            
     conn.close()
 
 def ekrani_olustur():
-    """Rich kütüphanesi ile ekran düzenini (Layout) oluşturur"""
     layout = Layout()
+    layout.split_column(Layout(name="header", size=3), Layout(name="main"))
+    layout["main"].split_row(Layout(name="stats", ratio=1), Layout(name="logs", ratio=2))
     
-    layout.split_column(
-        Layout(name="header", size=3),
-        Layout(name="main")
-    )
+    layout["header"].update(Panel(Align.center("[bold red]YAGYZ C2 SERVER - COMMAND & CONTROL[/bold red]"), style="red"))
     
-    layout["main"].split_row(
-        Layout(name="stats", ratio=1),
-        Layout(name="logs", ratio=2)
-    )
-    
-    # 1. Başlık Paneli
-    layout["header"].update(Panel(Align.center("[bold red]YagYz PESKER - TERMINAL OS v1.0[/bold red]"), style="red"))
-    
-    # 2. İstatistik Paneli
-    stats_text = f"\n[bold green]Bakiye:[/bold green] ${stats['bakiye']}\n"
-    stats_text += f"[bold blue]Level:[/bold blue] {stats['level']}\n"
+    stats_text = f"\n[bold green]Kripto Bakiye:[/bold green] ${stats['bakiye']}\n"
+    stats_text += f"[bold blue]Hacker Level:[/bold blue] {stats['level']} (XP: {stats['xp']}/100)\n"
     stats_text += f"[bold yellow]CPU Yükü:[/bold yellow] {stats['cpu_load']}\n"
-    stats_text += "\n[bold magenta]Aktif Görevler:[/bold magenta]\n[ ] Hedef IP'yi tarat\n[ ] Veritabanı şifresini kır"
     
-    layout["stats"].update(Panel(stats_text, title="[ Karakter & Sistem Durumu ]", border_style="green"))
+    stats_text += "\n[bold magenta]DarkNet Görev Panosu:[/bold magenta]\n"
+    for h in hedefler:
+        durum = "[x]" if h["id"] in tamamlanan_gorevler else "[ ]"
+        kilit = "(KİLİTLİ) " if stats["level"] < h.get("min_level", 1) else ""
+        stats_text += f"{durum} {kilit}{h['baslik']} (Lv.{h.get('min_level', 1)})\n"
     
-    # 3. Log Paneli
+    layout["stats"].update(Panel(stats_text, title="[ Sistem & Oyuncu Statüsü ]", border_style="green"))
+    
     log_text = "\n".join(logs)
     layout["logs"].update(Panel(log_text, title="[ Ağ Trafik Analizi ]", border_style="blue"))
     
     return layout
 
 def baslat():
+    ekrani_temizle()
     t = threading.Thread(target=socket_dinleyici, daemon=True)
     t.start()
-
     try:
         with Live(ekrani_olustur(), refresh_per_second=4) as live:
             while True:
+                import random
+                stats["cpu_load"] = f"{random.randint(5, 85)}%"
                 time.sleep(0.25)
                 live.update(ekrani_olustur())
     except KeyboardInterrupt:
-        print("\n[!] YagYz Terminal OS güvenli bir şekilde kapatılıyor. Bağlantılar kesildi.")
+        oyunu_kaydet()
+        print("\n[!] YagYz C2 güvenli bir şekilde kapatılıyor. Veriler diske yazıldı.")
 
 if __name__ == '__main__':
     baslat()
