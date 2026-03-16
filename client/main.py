@@ -221,9 +221,19 @@ def baslat():
                     print("\033[1;31mNo open ports found on this target.\033[0m")
                 else:
                     for p in acik_portlar:
-                        # Servis isimlerini belirle
-                        servis = "http" if p == "80" else "microsoft-ds" if p == "445" else "ssh" if p == "22" else "unknown"
-                        print(f"\033[1;32m{p}/tcp\033[0m".ljust(19) + "\033[1;37mopen\033[0m".ljust(17) + f"\033[1;36m{servis}\033[0m")
+                        servis = "http" if p == "80" else "https" if p == "443" else "microsoft-ds" if p == "445" else "ssh" if p == "22" else "unknown"
+                        
+                        # WAF (Güvenlik Duvarı) ve Bypass Durum Kontrolü
+                        if (hedef_ip, p) in asilan_duvarlar:
+                            durum = "\033[1;33mopen (WAF BYPASSED)\033[0m"
+                            
+                        elif p in hedef_data.get("korumali_portlar", []):
+                            durum = "\033[1;31mfiltered (WAF ACTIVE)\033[0m"
+                            
+                        else:
+                            durum = "\033[1;37mopen\033[0m"
+                            
+                        print(f"\033[1;32m{p}/tcp\033[0m".ljust(19) + durum.ljust(35) + f"\033[1;36m{servis}\033[0m")
                 
                 if cpu_tier == 0:
                     print("\n\033[1;33m[!] NOTE: CPU Tier 0 detected. Deep scan disabled.\033[0m")
@@ -239,22 +249,28 @@ def baslat():
             if len(parcalar) < 3: 
                 print("Kullanım: vulnscan <hedef_ip> <port>")
                 continue
+            
             ip, port = parcalar[1], parcalar[2]
             animasyonlu_yazdir(f"[*] {ip}:{port} üzerinde güvenlik açık taraması yapılıyor...")
             time.sleep(1.5)
             h = next((h for h in hedefler if h.get("hedef_ip") == ip), None)
+            
             if h and port in h.get("acik_portlar", []):
                 cve = h.get("zafiyetler", {}).get(port)
+                
                 if cve:
                     print(f"\033[1;35m[!] KRİTİK ZAFİYET BULUNDU: {cve}\033[0m (Exploit yazmak için bu kodu kullanın)")
                 else:
                     print("\033[1;32m[-] Bu serviste bilinen bir zafiyet (CVE) tespit edilemedi.\033[0m")
+                    
             else: print("\033[1;31m[-] Port kapalı veya taranamıyor.\033[0m")
 
         elif komut == 'bypass':
             if len(parcalar) < 3: continue
+            
             ip, port = parcalar[1], parcalar[2]
             h = next((h for h in hedefler if h.get("hedef_ip") == ip), None)
+            
             if h and port in h.get("korumali_portlar", []):
                 animasyonlu_yazdir(f"[*] WAF atlatılıyor...")
                 asilan_duvarlar.append((ip, port))
@@ -296,11 +312,17 @@ def baslat():
                 gercek_cve = hedef_data.get('zafiyetler', {}).get(port)
                 
                 if gercek_cve == cve:
+                    if ip not in sömürülen_sistemler: sömürülen_sistemler.append(ip)
+                    
                     print(f"\033[1;32m[+] SUCCESS: Exploit başarıyla tamamlandı.\033[0m")
                     print(f"\033[1;32m[+] CVE: {cve} açığı üzerinden sızıldı.\033[0m")
-                    print(f"\033[1;32m[+] Oturum açıldı: {hedef_data.get('kullanici_adi', 'root')}@{ip}\033[0m")
                     
-                    # Sunucuya sızma bilgisini gönder
+                    kullanici = hedef_data.get('kullanici_adi', 'root')
+                    sifre = hedef_data.get('sifre', 'unknown')
+                    print(f"\033[1;33m[*] HASH DUMP: Sistemden kimlik bilgileri çekiliyor...\033[0m")
+                    time.sleep(1)
+                    print(f"\033[1;36m[+] KİMLİK BULUNDU -> Kullanıcı: {kullanici} | Şifre: {sifre}\033[0m")
+                    
                     client_socket.send(f"SIZMA_BASARILI {ip}".encode('utf-8'))
                 else:
                     print(f"\033[1;31m[-] FAILURE: Yanlış CVE kodu! Hedef bu zafiyete karşı korumalı.\033[0m")
@@ -311,14 +333,19 @@ def baslat():
         elif komut == 'ssh':
             if len(parcalar) < 2 or '@' not in parcalar[1]: continue
             kullanici, ip = parcalar[1].split('@')
+            
             if ip not in sömürülen_sistemler:
                 print("\033[1;31m[-] Bağlantı reddedildi. Önce zafiyeti exploit etmelisiniz.\033[0m")
                 continue
+            
             h = next((h for h in hedefler if h.get("hedef_ip") == ip), None)
+            
             if h and kullanici == h.get("kullanici_adi"):
                 # Sandbox modülündeki SSH alt döngüsünü çağırıyoruz!
                 sandbox.ssh_baslat(kullanici, ip, h, client_socket)
+                
             else: print("\033[1;31mSSH Hatası: Kullanıcı bulunamadı.\033[0m")
+            
         else: print(f"bash: {komut}: komut bulunamadı. (Yardım için 'help' yazın)")
 
 if __name__ == '__main__':
