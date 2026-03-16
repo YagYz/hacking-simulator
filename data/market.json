@@ -43,6 +43,57 @@
             "dosya": "sql_inject.exe",
             "fiyat": 1500,
             "aciklama": "Sınırsız alınabilir yedek araç."
+        },
+        {
+            "id": "H-CPU-3",
+            "isim": "AMD Threadripper 7995WX",
+            "tip": "donanim",
+            "parca": "cpu",
+            "tier": 3,
+            "fiyat": 15000,
+            "aciklama": "Çok çekirdekli canavar. Tarama hızı +100%."
+        },
+        {
+            "id": "H-GPU-3",
+            "isim": "NVIDIA H100 Tensor Core",
+            "tip": "donanim",
+            "parca": "gpu",
+            "tier": 3,
+            "fiyat": 25000,
+            "aciklama": "Yapay zeka destekli brute-force. Şifre kırma hızı +150%."
+        },
+        {
+            "id": "H-NET-1",
+            "isim": "Fiber-Optic Network Card",
+            "tip": "donanim",
+            "parca": "net",
+            "tier": 1,
+            "fiyat": 3000,
+            "aciklama": "Veri indirme (download) hızını x2 yapar."
+        },
+        {
+            "id": "K-LOG",
+            "isim": "Auto-Log-Wiper V3",
+            "tip": "kit",
+            "dosya": "cleaner.sh",
+            "fiyat": 2500,
+            "aciklama": "SSH çıkışında logları otomatik siler (İz bırakmaz)."
+        },
+        {
+            "id": "K-SCAN",
+            "isim": "DeepPacket-Analyzer",
+            "tip": "kit",
+            "dosya": "deep_scan.bin",
+            "fiyat": 4500,
+            "aciklama": "Nmap taramalarında gizli (hidden) portları açığa çıkarır."
+        },
+        {
+            "id": "K-WAF",
+            "isim": "WAF-Killer Payload",
+            "tip": "kit",
+            "dosya": "bypass_pro.py",
+            "fiyat": 6000,
+            "aciklama": "Bypass komutunun başarı şansını ve hızını artırır."
         }
     ]
 }

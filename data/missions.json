@@ -93,6 +93,61 @@
             "istenen_eylem": "sizma_basarili",
             "odul": 15000,
             "xp": 400
+        },
+        {
+            "id": "M-006",
+            "baslik": "Kripto Havuzu Sabotajı",
+            "veren_kisi": "Lulz_Sec_V2",
+            "hikaye": "Bir rakip hacker grubu, ele geçirdikleri IoT cihazlarıyla devasa bir botnet kurmuş. 8080 (HTTP-Proxy) portundaki 'Log4Shell' zafiyetini (CVE-2021-44228) kullanarak sisteme gir ve madencilik scriptlerini (/home/botnet/miner.sh) sil. CPU gücün yetersiz kalabilir, dikkat et!",
+            "min_level": 5,
+            "hedef_ip": "185.112.45.10",
+            "acik_portlar": ["22", "8080"],
+            "korumali_portlar": ["8080"],
+            "zafiyetler": {"8080": "CVE-2021-44228"},
+            "kullanici_adi": "bot_master",
+            "sifre": "dark_web_king",
+            "istenen_eylem": "sizma_basarili",
+            "odul": 25000,
+            "xp": 650
+        },
+        {
+            "id": "M-007",
+            "baslik": "Otonom Araç Kontrol Sızıntısı",
+            "veren_kisi": "Ghost_in_the_Shell",
+            "hikaye": "Akıllı şehir projesindeki otonom araç yönetim sunucusuna sızmamız lazım. 1883 (MQTT) portunda kimlik doğrulama bypass açığı tespit ettik. '/etc/config/traffic_lights.conf' dosyasını çekip bize getir. Bu iş için RTX 4090 (GPU Tier 2) hızına ihtiyacın olacak.",
+            "min_level": 6,
+            "hedef_ip": "10.150.0.101",
+            "acik_portlar": ["22", "1883", "9001"],
+            "korumali_portlar": ["1883", "22"],
+            "zafiyetler": {"1883": "CVE-2023-28315"},
+            "kullanici_adi": "sys_auto",
+            "sifre": "vroom_vroom_99",
+            "istenen_eylem": "dosya_indirildi",
+            "istenen_dosya": "traffic_lights.conf",
+            "dosya_sistemi": {
+                "/": ["bin", "etc", "opt"],
+                "/etc": ["config", "ssh"],
+                "/etc/config": ["traffic_lights.conf", "vehicle_ids.db"],
+                "/opt": ["auto_drive_logs"]
+            },
+            "odul": 45000,
+            "xp": 1200
+        },
+        {
+            "id": "M-008",
+            "baslik": "Siber Savaş: Santral Baskını",
+            "veren_kisi": "Z_Dershanesi",
+            "hikaye": "Bir nükleer santralin SCADA sistemlerini kontrol eden ana gateway sunucusu hedefimizde. 502 (Modbus) portundaki 'DoublePulsar' benzeri bir zafiyet (CVE-2017-0143) aktif. İçeri gir ve '/root/shutdown_protocol.key' dosyasını imha et (rm).",
+            "min_level": 8,
+            "hedef_ip": "192.168.254.254",
+            "acik_portlar": ["22", "445", "502"],
+            "korumali_portlar": ["445", "502"],
+            "zafiyetler": {"445": "CVE-2017-0143"},
+            "kullanici_adi": "scada_admin",
+            "sifre": "nuclear_safe_123",
+            "istenen_eylem": "sizma_basarili",
+            "odul": 100000,
+            "xp": 3000
         }
     ]
 }

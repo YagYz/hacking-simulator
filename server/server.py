@@ -176,29 +176,36 @@ def ekrani_olustur():
     
     layout["header"].update(Panel(Align.center("[bold red]YAGYZ C2 SERVER - COMMAND & CONTROL[/bold red]"), style="red"))
     
-    # --- GÜNCELLENEN STATS METNİ ---
+    # --- KAYMAYI ÖNLEYEN YENİ STATS TASARIMI ---
     s_donanim = stats.get("donanim", {"cpu": "Standart", "ram": "8GB", "kits": []})
+    e = stats.get("envanter", {"cpu": 0, "gpu": 0, "ram": 0})
     
+    # Rich stili kullanarak metni oluşturuyoruz (ANSI kodları \033... yerine [renk]...)
     stats_text = f"\n[bold green]Kripto Bakiye:[/bold green] ${stats['bakiye']}\n"
     stats_text += f"[bold blue]Hacker Level:[/bold blue] {stats['level']} (XP: {stats['xp']}/100)\n"
     stats_text += f"[bold yellow]CPU Yükü:[/bold yellow] {stats['cpu_load']}\n"
     
     stats_text += "\n[bold cyan]SİSTEM BİLEŞENLERİ:[/bold cyan]\n"
-    stats_text += f" [white]CPU:[/white] {stats['donanim'].get('cpu', 'Yok')} (Tier {stats['envanter'].get('cpu', 0)})\n"
-    stats_text += f" [white]GPU:[/white] {stats['donanim'].get('gpu', 'Yok')} (Tier {stats['envanter'].get('gpu', 0)})\n"
+    stats_text += f" [white]CPU:[/white] {s_donanim['cpu']} [green](x{1 + e['cpu']*0.5})[/green]\n"
+    stats_text += f" [white]GPU:[/white] {s_donanim['gpu']} [green](x{1 + e['gpu']*0.5})[/green]\n"
     stats_text += f" [white]RAM:[/white] {s_donanim['ram']}\n"
     
     if s_donanim['kits']:
-        stats_text += f" [white]KİTLER:[/white] {', '.join(s_donanim['kits'])[:20]}...\n"
+        # Kitleri listelerken çok uzun olup çerçeveyi patlatmasın diye sınırlıyoruz
+        kit_liste = ", ".join(s_donanim['kits'])
+        if len(kit_liste) > 25: kit_liste = kit_liste[:22] + "..."
+        stats_text += f" [white]KİTLER:[/white] {kit_liste}\n"
     
     stats_text += "\n[bold magenta]DarkNet Görev Panosu:[/bold magenta]\n"
     for h in hedefler:
-        durum = "[x]" if h["id"] in tamamlanan_gorevler else "[ ]"
-        kilit = "(KİLİTLİ) " if stats["level"] < h.get("min_level", 1) else ""
-        stats_text += f"{durum} {kilit}{h['baslik']} (Lv.{h.get('min_level', 1)})\n"
+        durum = "[bold green][x][/bold green]" if h["id"] in tamamlanan_gorevler else "[white][ ][/white]"
+        kilit = "[bold red](KİLİTLİ)[/bold red] " if stats["level"] < h.get("min_level", 1) else ""
+        stats_text += f"{durum} {kilit}{h['baslik'][:20]}\n"
     
+    # Rich Panel artık uzunluğu otomatik ve doğru hesaplayacak
     layout["stats"].update(Panel(stats_text, title="[ Sistem & Oyuncu Statüsü ]", border_style="green"))
     
+    # Logların zaten Rich stiline (bold green vb.) sahip olduğunu varsayıyorum
     log_text = "\n".join(logs)
     layout["logs"].update(Panel(log_text, title="[ Ağ Trafik Analizi ]", border_style="blue"))
     

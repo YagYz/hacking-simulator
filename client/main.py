@@ -34,6 +34,16 @@ def yardim_menusu():
     print(f"  \033[1;32mnano\033[0m                 : İstihbarat notlarını düzenlemek için editörü açar.")
     print(f"  \033[1;32mclear / exit\033[0m         : Ekranı temizler veya güvenli çıkış yapar.")
     print("="*60 + "\n")
+    
+def sure_hesapla(baz_sure, parca_tipi, stats):
+    # Envanterden ilgili parçanın tier'ını al (yoksa 0)
+    tier = stats.get("envanter", {}).get(parca_tipi, 0)
+    
+    # Her tier hızı %50 artırır (süreyi düşürür)
+    carpan = 0.5 
+    yeni_sure = baz_sure / (1 + (tier * carpan))
+    
+    return yeni_sure
 
 def baslat():
     ekrani_temizle()
@@ -168,18 +178,56 @@ def baslat():
             print("="*30 + "\n")
 
         elif komut == 'nmap':
-            if len(parcalar) < 2: continue
-            ip = parcalar[1]
-            animasyonlu_yazdir(f"[*] {ip} taranıyor...", 0.02)
-            time.sleep(1)
-            h = next((h for h in hedefler if h.get("hedef_ip") == ip), None)
-            if h:
-                for port in h.get("acik_portlar", []):
-                    if (ip, port) in asilan_duvarlar: print(f"\033[1;33m[+] {port}/tcp (WAF ÇÖKERTİLDİ)\033[0m")
-                    elif port in h.get("korumali_portlar", []): print(f"\033[1;31m[!] {port}/tcp (WAF AKTİF)\033[0m")
-                    else: print(f"\033[1;32m[+] {port}/tcp açık\033[0m")
-                client_socket.send(f"TARAMA_YAPILDI {ip}".encode('utf-8'))
-            else: print("\033[1;31m[-] Host bulunamadı.\033[0m")
+            if len(parcalar) < 2:
+                print("\033[1;31m[!] Kullanım: nmap <hedef_ip>\033[0m")
+                continue
+            
+            hedef_ip = parcalar[1]
+            s = kayit_oku()["stats"]
+            cpu_tier = s.get("envanter", {}).get("cpu", 0)
+            
+            # Donanım bazlı hız hesaplama
+            bekleme = 5 / (1 + (cpu_tier * 0.5))
+            
+            print(f"\033[1;34m[*] Starting Nmap 7.92 ( https://nmap.org ) at {time.strftime('%Y-%m-%d %H:%M')}\033[0m")
+            print(f"\033[1;30m[*] Scanning {hedef_ip} [CPU Tier {cpu_tier}]...\033[0m")
+            
+            # Görsel tarama barı
+            bar_uzunluk = 20
+            for i in range(bar_uzunluk + 1):
+                yuzde = int((i / bar_uzunluk) * 100)
+                doluluk = "█" * i
+                bosluk = " " * (bar_uzunluk - i)
+                print(f"\r\033[1;30m    [{doluluk}{bosluk}] %{yuzde}\033[0m", end="", flush=True)
+                time.sleep(bekleme / bar_uzunluk)
+            print("\n")
+
+            hedef_data = next((h for h in hedefler if h["hedef_ip"] == hedef_ip), None)
+            
+            if hedef_data:
+                print(f"\033[1;32mNmap scan report for {hedef_ip}\033[0m")
+                print("\033[1;37mHost is up (0.00042s latency).\033[0m")
+                print("\033[1;34mPORT      STATE   SERVICE\033[0m")
+                print("\033[1;30m---------- ------- -------\033[0m")
+                
+                acik_portlar = hedef_data.get('acik_portlar', [])
+                
+                if not acik_portlar:
+                    print("\033[1;31mNo open ports found on this target.\033[0m")
+                else:
+                    for p in acik_portlar:
+                        # Servis isimlerini belirle
+                        servis = "http" if p == "80" else "microsoft-ds" if p == "445" else "ssh" if p == "22" else "unknown"
+                        print(f"\033[1;32m{p}/tcp\033[0m".ljust(19) + "\033[1;37mopen\033[0m".ljust(17) + f"\033[1;36m{servis}\033[0m")
+                
+                if cpu_tier == 0:
+                    print("\n\033[1;33m[!] NOTE: CPU Tier 0 detected. Deep scan disabled.\033[0m")
+                
+                # Sunucuya log gönder
+                client_socket.send(f"TARAMA_YAPILDI {hedef_ip}".encode('utf-8'))
+                print("\033[1;34m\nNmap done: 1 IP address (1 host up) scanned.\033[0m")
+            else:
+                print(f"\033[1;31m[!] Failed to resolve '{hedef_ip}'. Target might be down or protected.\033[0m")
 
         # YENİ MEKANİK: Zafiyet Taraması
         elif komut == 'vulnscan':
@@ -211,26 +259,49 @@ def baslat():
         # YENİ MEKANİK: CVE kodu ile Sömürü (Crack yerine)
         elif komut == 'exploit':
             if len(parcalar) < 4:
-                print("Kullanım: exploit <hedef_ip> <port> <CVE-Kodu> (Örn: exploit 10.0.1.15 22 CVE-2001-0144)")
+                print("\033[1;31m[!] Kullanım: exploit <ip> <port> <CVE>\033[0m")
                 continue
-            ip, port, girilen_cve = parcalar[1], parcalar[2], parcalar[3].upper()
-            h = next((h for h in hedefler if h.get("hedef_ip") == ip), None)
-            
-            if h and port in h.get("acik_portlar", []):
-                if port in h.get("korumali_portlar", []) and (ip, port) not in asilan_duvarlar:
-                    print("\033[1;41m[ CRITICAL ] ERİŞİM REDDEDİLDİ! WAF bağlantıyı kesti.\033[0m")
-                    continue
                 
-                gercek_cve = h.get("zafiyetler", {}).get(port)
-                if gercek_cve == girilen_cve:
-                    animasyonlu_yazdir(f"[*] {girilen_cve} zafiyeti üzerinden sisteme payload enjekte ediliyor...")
-                    time.sleep(1)
-                    if ip not in sömürülen_sistemler: sömürülen_sistemler.append(ip)
-                    print(f"\033[1;32m[+] Sömürü Başarılı! (SSH: {h.get('kullanici_adi')} / {h.get('sifre')})\033[0m")
+            ip, port, cve = parcalar[1], parcalar[2], parcalar[3].upper()
+            s = kayit_oku()["stats"]
+            gpu_tier = s.get("envanter", {}).get("gpu", 0)
+            
+            # Formül: 10 saniye baz süre, GPU Tier arttıkça süre düşer
+            bekleme = 10 / (1 + (gpu_tier * 0.7))
+            
+            print(f"\n\033[1;31m[!] DİKKAT: Exploit başlatılıyor! Hedef: {ip}:{port}\033[0m")
+            print(f"\033[1;35m[*] GPU Tier {gpu_tier} aktif. Payload paketleri hazırlanıyor...\033[0m")
+            
+            # Dinamik İlerleme Barı (Nmap ile uyumlu tasarım)
+            bar_uzunluk = 25
+            for i in range(bar_uzunluk + 1):
+                yuzde = int((i / bar_uzunluk) * 100)
+                doluluk = "█" * i
+                bosluk = " " * (bar_uzunluk - i)
+                print(f"\r\033[1;31m    [{doluluk}{bosluk}] %{yuzde} Payload Injecting...\033[0m", end="", flush=True)
+                time.sleep(bekleme / bar_uzunluk)
+            print("\n")
+
+            hedef_data = next((h for h in hedefler if h["hedef_ip"] == ip), None)
+            
+            # Hata çözümü: 'port' yerine 'acik_portlar' listesini kontrol ediyoruz
+            if hedef_data and port in [str(p) for p in hedef_data.get('acik_portlar', [])]:
+                
+                # Zafiyet (CVE) kontrolü
+                gercek_cve = hedef_data.get('zafiyetler', {}).get(port)
+                
+                if gercek_cve == cve:
+                    print(f"\033[1;32m[+] SUCCESS: Exploit başarıyla tamamlandı.\033[0m")
+                    print(f"\033[1;32m[+] CVE: {cve} açığı üzerinden sızıldı.\033[0m")
+                    print(f"\033[1;32m[+] Oturum açıldı: {hedef_data.get('kullanici_adi', 'root')}@{ip}\033[0m")
+                    
+                    # Sunucuya sızma bilgisini gönder
                     client_socket.send(f"SIZMA_BASARILI {ip}".encode('utf-8'))
                 else:
-                    print(f"\033[1;31m[-] EXPLOIT BAŞARISIZ! Hedef sistem {girilen_cve} açığına karşı yamalanmış.\033[0m")
-            else: print("\033[1;31m[-] Port kapalı.\033[0m")
+                    print(f"\033[1;31m[-] FAILURE: Yanlış CVE kodu! Hedef bu zafiyete karşı korumalı.\033[0m")
+                    print(f"\033[1;33m[İpucu] 'vulnscan {ip} {port}' yaparak gerçek açığı öğrenin.\033[0m")
+            else:
+                print(f"\033[1;31m[-] FAILURE: Bağlantı hatası! {ip}:{port} üzerinde exploit edilecek açık bir port bulunamadı.\033[0m")
 
         elif komut == 'ssh':
             if len(parcalar) < 2 or '@' not in parcalar[1]: continue
