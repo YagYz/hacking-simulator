@@ -212,6 +212,11 @@ def baslat():
                 
                 acik_portlar = hedef_data.get('acik_portlar', [])
                 
+                if (sandbox.virtual_root / "deep_scan.bin").exists():
+                    print("\033[1;35m[*] DeepPacket-Analyzer devrede: Gizli servisler aranıyor...\033[0m")
+                    # Gizli portları da ekle (Missions.json'da gizli_portlar diye bir alan açabiliriz)
+                    acik_portlar += hedef_data.get('gizli_portlar', [])
+                
                 if not acik_portlar:
                     print("\033[1;31mNo open ports found on this target.\033[0m")
                 else:

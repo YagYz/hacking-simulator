@@ -62,12 +62,18 @@ class VirtualSandbox:
             ssh_komut = ssh_parca[0].lower()
             
             if ssh_komut == "exit":
-                print("\033[1;33mBağlantı kapatılıyor...\033[0m")
+                # Kit kontrolü: Eğer cleaner.sh yerel makinede varsa logları oto-sil
+                if (self.virtual_root / "cleaner.sh").exists():
+                    print("\033[1;32m[*] Auto-Log-Wiper devrede: auth.log temizleniyor...\033[0m")
+                    log_silindi = True # Logları silinmiş say
+                
                 if not log_silindi:
-                    print("\033[1;41m[ POLİS UYARISI ] İzler (/var/log/auth.log) silinmedi! Risk altındasınız.\033[0m")
+                    print("\033[1;41m[ RİSK ] İzler silinmedi!\033[0m")
                 break
+            
             elif ssh_komut == "ls":
                 print("  ".join(uzak_fs.get(uzak_dir, [])))
+            
             elif ssh_komut == "cd":
                 if len(ssh_parca) < 2: continue
                 git = ssh_parca[1]
@@ -79,6 +85,7 @@ class VirtualSandbox:
                     yeni_dir = uzak_dir + ("/" if uzak_dir != "/" else "") + git
                     if yeni_dir in uzak_fs: uzak_dir = yeni_dir
                     else: print(f"bash: cd: {git}: Böyle bir dosya ya da dizin yok")
+            
             elif ssh_komut == "download":
                 if len(ssh_parca) < 2: continue
                 dosya = ssh_parca[1]
@@ -88,6 +95,7 @@ class VirtualSandbox:
                     client_socket.send(f"DOSYA_INDIRILDI {hedef_ip} {dosya}".encode('utf-8'))
                     print(f"\033[1;32m[+] Dosya yerel makineye çekildi: {dosya}\033[0m")
                 else: print(f"Hata: {dosya} bulunamadı.")
+            
             elif ssh_komut == "rm":
                 if len(ssh_parca) < 2: continue
                 dosya = ssh_parca[1]
