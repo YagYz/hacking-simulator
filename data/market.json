@@ -1,0 +1,48 @@
+{
+    "urunler": [
+        {
+            "id": "H-CPU-1",
+            "isim": "Intel i3-12100F",
+            "tip": "donanim",
+            "parca": "cpu",
+            "tier": 1,
+            "fiyat": 1000,
+            "aciklama": "Giriş seviyesi işlemci. Tarama hızı +10%."
+        },
+        {
+            "id": "H-CPU-2",
+            "isim": "Intel i7-14700K",
+            "tip": "donanim",
+            "parca": "cpu",
+            "tier": 2,
+            "fiyat": 3500,
+            "aciklama": "Orta segment canavar. Tarama hızı +40%."
+        },
+        {
+            "id": "H-GPU-1",
+            "isim": "GTX 1650 (Sanal)",
+            "tip": "donanim",
+            "parca": "gpu",
+            "tier": 1,
+            "fiyat": 2000,
+            "aciklama": "Hash kırma ve sızma işlemlerini hızlandırır."
+        },
+        {
+            "id": "H-GPU-2",
+            "isim": "RTX 4090 (Sanal)",
+            "tip": "donanim",
+            "parca": "gpu",
+            "tier": 2,
+            "fiyat": 8000,
+            "aciklama": "Süper bilgisayar gücü. Şifreler saniyeler içinde kırılır."
+        },
+        {
+            "id": "K-01",
+            "isim": "Advanced SQL-Kit",
+            "tip": "kit",
+            "dosya": "sql_inject.exe",
+            "fiyat": 1500,
+            "aciklama": "Sınırsız alınabilir yedek araç."
+        }
+    ]
+}

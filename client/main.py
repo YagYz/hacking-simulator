@@ -4,6 +4,7 @@ import sys
 import os
 from utils import *
 from sandbox import VirtualSandbox
+from market import market_menu
 
 try: import readline
 except ImportError: pass
@@ -151,6 +152,20 @@ def baslat():
                 print("\033[1;35m[*] Görev kabul edildi. Sistemler optimize ediliyor...\033[0m\n")
             else:
                 print(f"\033[1;31m[-] HATA: '{gorev_id}' geçersiz.\033[0m")
+                
+        elif komut == 'market':
+            # Sunucudan güncel statları almak için bir sinyal gönderilebilir 
+            # veya mevcut stats ile devam edilebilir.
+            market_menu(client_socket, kayit_oku()["stats"], sandbox)
+
+        # Stats gösterimi için (isteğe bağlı) yeni bir komut:
+        elif komut == 'system':
+            s = kayit_oku()["stats"]
+            print("\n\033[1;36m=== YagYz SİSTEM BİLEŞENLERİ ===\033[0m")
+            print(f"CPU: {s.get('donanim', {}).get('cpu', 'Standart')}")
+            print(f"RAM: {s.get('donanim', {}).get('ram', '8GB')}")
+            print(f"YÜKLÜ KİTLER: {', '.join(s.get('donanim', {}).get('kits', []))}")
+            print("="*30 + "\n")
 
         elif komut == 'nmap':
             if len(parcalar) < 2: continue

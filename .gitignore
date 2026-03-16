@@ -1,6 +1,21 @@
+# --- OYUN VERİLERİ ---
 data/savegame.json
-data/notlar.txt
-
 local_machine/
 
-.vscode/
+# --- PYTHON SİSTEM DOSYALARI ---
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+ENV/
+
+# --- İŞLETİM SİSTEMİ DOSYALARI ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

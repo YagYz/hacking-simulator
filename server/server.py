@@ -38,6 +38,12 @@ def oyunu_yukle():
 
 stats, tamamlanan_gorevler = oyunu_yukle()
 
+if "donanim" not in stats:
+    stats["donanim"] = {"cpu": "Standart", "ram": "8GB", "kits": []}
+    
+if "envanter" not in stats:
+    stats["envanter"] = {"cpu": 0, "gpu": 0, "ram": 0, "kits": []}
+
 def oyunu_kaydet():
     kayit = {"stats": stats, "tamamlanan_gorevler": tamamlanan_gorevler}
     with open(SAVE_YOLU, 'w', encoding='utf-8') as f:
@@ -118,6 +124,39 @@ def socket_dinleyici():
                 hedef_ip, dosya_adi = parcalar[1], parcalar[2]
                 logs.append(f"[bold cyan][+] VERİ SIZINTISI: {hedef_ip} sunucusundan '{dosya_adi}' başarıyla çekildi.[/bold cyan]")
                 gorev_tamamla(hedef_ip, "DOSYA_INDIRILDI", ekstra_bilgi=dosya_adi)
+                
+            elif data.startswith("SATIN_ALMA"):
+                parcalar = data.split()
+                fiyat = int(parcalar[1])
+                urun_tipi = parcalar[2] # donanim / kit
+                urun_id = parcalar[3]   # H-CPU-1 gibi
+                urun_ismi = " ".join(parcalar[4:])
+                
+                if stats["bakiye"] >= fiyat:
+                    if urun_tipi == "donanim":
+                        # Parça tipini ve tier'ı ID'den veya JSON'dan çekebiliriz
+                        # Basitlik için ID kontrolü:
+                        p_tip = "cpu" if "CPU" in urun_id else "gpu" if "GPU" in urun_id else "ram"
+                        t_seviye = int(urun_id.split('-')[-1]) # Sondaki rakamı al
+                        
+                        # Eğer zaten bu tier veya üstüne sahipse engelle
+                        if stats["envanter"].get(p_tip, 0) >= t_seviye:
+                            conn.send("ZATEN_SAHIP".encode('utf-8'))
+                            continue
+                        
+                        stats["envanter"][p_tip] = t_seviye
+                        stats["donanim"][p_tip] = urun_ismi # Stats ekranı için isim
+                    else:
+                        # Kitler sınırsız alınabilir
+                        if urun_ismi not in stats["donanim"]["kits"]:
+                            stats["donanim"]["kits"].append(urun_ismi)
+                    
+                    stats["bakiye"] -= fiyat
+                    logs.append(f"[bold green][+] DONANIM GÜNCELLENDİ:[/bold green] {urun_ismi}")
+                    oyunu_kaydet()
+                    conn.send("ONAY".encode('utf-8'))
+                else:
+                    conn.send("YETERSIZ_BAKIYE".encode('utf-8'))
 
             elif data == "clear":
                 logs.clear()
@@ -137,9 +176,20 @@ def ekrani_olustur():
     
     layout["header"].update(Panel(Align.center("[bold red]YAGYZ C2 SERVER - COMMAND & CONTROL[/bold red]"), style="red"))
     
+    # --- GÜNCELLENEN STATS METNİ ---
+    s_donanim = stats.get("donanim", {"cpu": "Standart", "ram": "8GB", "kits": []})
+    
     stats_text = f"\n[bold green]Kripto Bakiye:[/bold green] ${stats['bakiye']}\n"
     stats_text += f"[bold blue]Hacker Level:[/bold blue] {stats['level']} (XP: {stats['xp']}/100)\n"
     stats_text += f"[bold yellow]CPU Yükü:[/bold yellow] {stats['cpu_load']}\n"
+    
+    stats_text += "\n[bold cyan]SİSTEM BİLEŞENLERİ:[/bold cyan]\n"
+    stats_text += f" [white]CPU:[/white] {stats['donanim'].get('cpu', 'Yok')} (Tier {stats['envanter'].get('cpu', 0)})\n"
+    stats_text += f" [white]GPU:[/white] {stats['donanim'].get('gpu', 'Yok')} (Tier {stats['envanter'].get('gpu', 0)})\n"
+    stats_text += f" [white]RAM:[/white] {s_donanim['ram']}\n"
+    
+    if s_donanim['kits']:
+        stats_text += f" [white]KİTLER:[/white] {', '.join(s_donanim['kits'])[:20]}...\n"
     
     stats_text += "\n[bold magenta]DarkNet Görev Panosu:[/bold magenta]\n"
     for h in hedefler:
