@@ -5,6 +5,7 @@ import os
 from utils import *
 from sandbox import VirtualSandbox
 from market import market_menu
+from chat import chat_menu, bildirim_kontrol
 
 try: import readline
 except ImportError: pass
@@ -65,6 +66,13 @@ def baslat():
         return
 
     while True:
+        
+        guncel_stats = kayit_oku()["stats"]
+        yeni_mesajlar = bildirim_kontrol(guncel_stats, sandbox)
+        
+        if yeni_mesajlar > 0:
+            print(f"\n\033[1;32m[!] YagYz Messenger: {yeni_mesajlar} YENİ mesajınız var. Okumak için 'chat' yazın.\033[0m")
+            
         # Yol göstergesini Sandbox'tan dinamik alıyoruz
         girdi = input(f"\033[1;32mroot@yagyz\033[0m:\033[1;34m{sandbox.get_prompt_path()}\033[0m# ").strip()
         if not girdi: continue
@@ -168,6 +176,10 @@ def baslat():
             # Sunucudan güncel statları almak için bir sinyal gönderilebilir 
             # veya mevcut stats ile devam edilebilir.
             market_menu(client_socket, kayit_oku()["stats"], sandbox)
+            
+        elif komut == 'chat':
+            # `oyunu_kaydet` fonksiyonunu parametre olarak gönderiyoruz ki okunanları kaydetsin
+            chat_menu(guncel_stats, sandbox, client_socket) # Eğer client içinde kaydetme fonk. varsa onu lambda yerine yaz
 
         # Stats gösterimi için (isteğe bağlı) yeni bir komut:
         elif komut == 'system':

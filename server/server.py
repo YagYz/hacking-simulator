@@ -125,6 +125,16 @@ def socket_dinleyici():
                 logs.append(f"[bold cyan][+] VERİ SIZINTISI: {hedef_ip} sunucusundan '{dosya_adi}' başarıyla çekildi.[/bold cyan]")
                 gorev_tamamla(hedef_ip, "DOSYA_INDIRILDI", ekstra_bilgi=dosya_adi)
                 
+            elif data.startswith("MESAJ_OKUNDU"):
+                mesaj_id = data.split()[1]
+                if "okunan_mesajlar" not in stats:
+                    stats["okunan_mesajlar"] = []
+                
+                if mesaj_id not in stats["okunan_mesajlar"]:
+                    stats["okunan_mesajlar"].append(mesaj_id)
+                    oyunu_kaydet() # Diske yaz!
+                    logs.append(f"[bold blue][*] BİLGİ:[/bold blue] {mesaj_id} kodlu şifreli mesaj okundu.")
+                
             elif data.startswith("SATIN_ALMA"):
                 parcalar = data.split()
                 fiyat = int(parcalar[1])

@@ -1,0 +1,25 @@
+{
+    "mesajlar": [
+        {
+            "id": "MSG-01",
+            "gonderen": "Anonim_Rehber",
+            "konu": "YagYz Ağına Hoş Geldin",
+            "trigger": {"tip": "baslangic", "deger": "none"},
+            "icerik": "Selam. YagYz C2 sistemine giriş yaptığını görüyorum. İlk iş olarak mahalle bakkalının ağına nmap atarak paslanıp paslanmadığını görelim."
+        },
+        {
+            "id": "MSG-02",
+            "gonderen": "ShadowBroker",
+            "konu": "Kaba Kuvvet Gerekli",
+            "trigger": {"tip": "seviye", "deger": 2},
+            "icerik": "İyi gidiyorsun. Ama her sistemde açık bulamazsın. Dark Web Market'e girip Hydra Brute-Force kitini satın al. Şifreleri kırmak için ona ihtiyacımız olacak."
+        },
+        {
+            "id": "MSG-03",
+            "gonderen": "ShadowBroker",
+            "konu": "Hydra Aktif Edildi!",
+            "trigger": {"tip": "esya", "deger": "hydra.bin"},
+            "icerik": "Alet çantana Hydra'yı eklediğini sistemlerimden gördüm. Harika yatırım! Şimdi 'hydra <ip> <user>' komutuyla o kırılamaz denen şifreleri parçalama vakti."
+        }
+    ]
+}
