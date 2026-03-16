@@ -125,6 +125,27 @@ def socket_dinleyici():
                 logs.append(f"[bold cyan][+] VERİ SIZINTISI: {hedef_ip} sunucusundan '{dosya_adi}' başarıyla çekildi.[/bold cyan]")
                 gorev_tamamla(hedef_ip, "DOSYA_INDIRILDI", ekstra_bilgi=dosya_adi)
                 
+            elif data.startswith("HEAT_UPDATE"):
+                deger = int(data.split()[1])
+                stats["heat"] = max(0, min(100, stats.get("heat", 0) + deger))
+                
+                if deger > 0:
+                    logs.append(f"[bold red]!!! POLİS RADARI !!! İz bırakıldı. Aranma Seviyesi Arttı (+{deger})[/bold red]")
+                else:
+                    logs.append(f"[bold cyan][*] GHOST PROTOCOL: Dijital izler temizlendi. ({deger})[/bold cyan]")
+                oyunu_kaydet()
+
+            elif data == "GHOST_PROTOCOL":
+                # Rüşvet / İz silme ödemesi (2500$ karşılığı -50 Heat)
+                if stats["bakiye"] >= 2500:
+                    stats["bakiye"] -= 2500
+                    stats["heat"] = max(0, stats.get("heat", 0) - 50)
+                    logs.append("[bold magenta][*] DarkNet üzerinden temizleyicilere ödeme yapıldı. İzler siliniyor.[/bold magenta]")
+                    oyunu_kaydet()
+                    conn.send("ONAY".encode('utf-8'))
+                else:
+                    conn.send("YETERSIZ".encode('utf-8'))
+                
             elif data.startswith("MESAJ_OKUNDU"):
                 mesaj_id = data.split()[1]
                 if "okunan_mesajlar" not in stats:
@@ -194,6 +215,15 @@ def ekrani_olustur():
     stats_text = f"\n[bold green]Kripto Bakiye:[/bold green] ${stats['bakiye']}\n"
     stats_text += f"[bold blue]Hacker Level:[/bold blue] {stats['level']} (XP: {stats['xp']}/100)\n"
     stats_text += f"[bold yellow]CPU Yükü:[/bold yellow] {stats['cpu_load']}\n"
+    
+    heat = stats.get("heat", 0)
+    # Renk dinamik olarak değişsin: Yeşil -> Sarı -> Kırmızı
+    heat_color = "green" if heat < 30 else "yellow" if heat < 70 else "red"
+    bar_dolu = int((heat / 100) * 20)
+    bar_gorsel = "█" * bar_dolu + "-" * (20 - bar_dolu)
+    
+    stats_text += f"\n[{heat_color}]ARANMA SEVİYESİ (HEAT):[/{heat_color}]\n"
+    stats_text += f"[{heat_color}][{bar_gorsel}] %{heat}[/{heat_color}]\n"
     
     stats_text += "\n[bold cyan]SİSTEM BİLEŞENLERİ:[/bold cyan]\n"
     stats_text += f" [white]CPU:[/white] {s_donanim['cpu']} [green](x{1 + e['cpu']*0.5})[/green]\n"

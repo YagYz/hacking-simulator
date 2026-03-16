@@ -73,8 +73,21 @@ def baslat():
         if yeni_mesajlar > 0:
             print(f"\n\033[1;32m[!] YagYz Messenger: {yeni_mesajlar} YENİ mesajınız var. Okumak için 'chat' yazın.\033[0m")
             
-        # Yol göstergesini Sandbox'tan dinamik alıyoruz
-        girdi = input(f"\033[1;32mroot@yagyz\033[0m:\033[1;34m{sandbox.get_prompt_path()}\033[0m# ").strip()
+        heat_seviyesi = guncel_stats.get("heat", 0)
+        if heat_seviyesi >= 100:
+            print("\033[1;41m[ CRITICAL ] SİBER POLİS AĞINIZI TESPİT ETTİ!\033[0m")
+            print("\033[1;31mTüm ofansif operasyonlar geçici olarak kilitlendi.\033[0m")
+            print("\033[1;33mAcilen 'ghost' komutunu kullanarak temizleyicilere 2500$ ödemelisiniz!\033[0m")
+            komut = input(f"\n\033[1;31mroot@yagyz (KİLİTLİ):\033[1;34m~#\033[0m ").strip()
+        
+            if komut != 'ghost' and komut != 'exit':
+                print("\033[1;31m[!] Sadece 'ghost' komutuna izin var.\033[0m")
+                continue    
+        
+        else:
+            # Yol göstergesini Sandbox'tan dinamik alıyoruz
+            girdi = input(f"\033[1;32mroot@yagyz\033[0m:\033[1;34m{sandbox.get_prompt_path()}\033[0m# ").strip()
+        
         if not girdi: continue
             
         parcalar = girdi.split()
@@ -253,6 +266,7 @@ def baslat():
                 
                 # Sunucuya log gönder
                 client_socket.send(f"TARAMA_YAPILDI {hedef_ip}".encode('utf-8'))
+                client_socket.send("HEAT_UPDATE 5".encode('utf-8'))
                 print("\033[1;34m\nNmap done: 1 IP address (1 host up) scanned.\033[0m")
             else:
                 print(f"\033[1;31m[!] Failed to resolve '{hedef_ip}'. Target might be down or protected.\033[0m")
@@ -338,6 +352,7 @@ def baslat():
                     
                     # Sunucuya sızma bilgisini gönder
                     client_socket.send(f"SIZMA_BASARILI {ip}".encode('utf-8'))
+                    client_socket.send("HEAT_UPDATE 15".encode('utf-8'))
                 else:
                     print(f"\033[1;31m[-] FAILURE: Yanlış CVE kodu! Hedef bu zafiyete karşı korumalı.\033[0m")
                     print(f"\033[1;33m[İpucu] 'vulnscan {ip} {port}' yaparak gerçek açığı öğrenin.\033[0m")
@@ -399,9 +414,25 @@ def baslat():
                 print(f"\033[1;33m[*] Artık 'ssh {kullanici_adi}@{ip}' komutuyla bağlanabilirsiniz.\033[0m")
                 
                 if ip not in sömürülen_sistemler: sömürülen_sistemler.append(ip)
+                client_socket.send("HEAT_UPDATE 20".encode('utf-8'))
                 client_socket.send(f"SIZMA_BASARILI {ip}".encode('utf-8'))
             else:
                 print(f"\033[1;31m[-] BAŞARISIZ! Wordlist tükendi veya kullanıcı adı yanlış.\033[0m")
+                
+        elif komut == 'ghost':
+            if heat_seviyesi == 0:
+                print("\033[1;36m[*] Zaten tamamen temizsiniz.\033[0m")
+                continue
+                
+            print("\033[1;35m[*] Dark Web temizleyicileriyle iletişim kuruluyor...\033[0m")
+            time.sleep(1)
+            client_socket.send("GHOST_PROTOCOL".encode('utf-8'))
+            cevap = client_socket.recv(1024).decode('utf-8')
+            
+            if cevap == "ONAY":
+                print("\033[1;32m[+] 2500$ transfer edildi. Siber polis hedeften saptırıldı (-50 Heat).\033[0m")
+            else:
+                print("\033[1;31m[-] HATA: Rüşvet için yeterli bakiyen yok!\033[0m")
                 
         elif komut.startswith('ssh'):
             if len(parcalar) < 2 or '@' not in parcalar[1]:

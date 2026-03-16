@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from utils import animasyonlu_yazdir
+import time
 
 class VirtualSandbox:
     def __init__(self, base_dir):
@@ -64,11 +65,35 @@ class VirtualSandbox:
             if ssh_komut == "exit":
                 # Kit kontrolü: Eğer cleaner.sh yerel makinede varsa logları oto-sil
                 if (self.virtual_root / "cleaner.sh").exists():
-                    print("\033[1;32m[*] Auto-Log-Wiper devrede: auth.log temizleniyor...\033[0m")
-                    log_silindi = True # Logları silinmiş say
-                
-                if not log_silindi:
-                    print("\033[1;41m[ RİSK ] İzler silinmedi!\033[0m")
+                    print("\033[1;32m[*] Auto-Log-Wiper V3 devrede: 'auth.log' ve 'history' temizleniyor...\033[0m")
+                    time.sleep(1)
+                    print("\033[1;36m[+] İz bırakmadan çıkış yapıldı.\033[0m")
+                else:
+                    # 2. Manuel Silme Kontrolü (Bilek gücüyle oynayanlar için)
+                    # hedef_data içindeki dosya sisteminde auth.log duruyor mu diye bakıyoruz
+                    # (Senin sandbox içindeki dosya sistemi değişkenin neyse onu kullanmalısın, örn: self.sistem_dosyalari)
+                    
+                    log_silinmis_mi = False
+                    # Önce /var/log klasörü hala var mı, varsa içinde auth.log var mı diye bakıyoruz
+                    if "/var/log" in self.aktif_fs:
+                        if "auth.log" not in self.aktif_fs["/var/log"]:
+                            log_silinmis_mi = True
+                    else:
+                        # Adam komple /var/log klasörünü uçurmuşsa yine silinmiş sayılır :D
+                        log_silinmis_mi = True 
+
+                    if log_silinmis_mi:
+                        print("\033[1;36m[+] Sistem logları (auth.log) manuel olarak temizlenmiş. İz bırakılmadı.\033[0m")
+                    else:
+                        # 3. Ceza Kesimi (Yakalandı!)
+                        print("\033[1;41m[ RİSK TESPİTİ ] Sisteme giriş kayıtlarınız (auth.log) silinmedi!\033[0m")
+                        print("\033[1;31m[*] Siber Güvenlik birimleri izinizi sürüyor... (+30 HEAT)\033[0m")
+                        try:
+                            # Main.py'den passladığımız client_socket ile sunucuya cezayı kesiyoruz
+                            client_socket.send("HEAT_UPDATE 30".encode('utf-8'))
+                        except: pass
+                    
+                print("\033[1;33mBağlantı kapatıldı.\033[0m")
                 break
             
             elif ssh_komut == "ls":
