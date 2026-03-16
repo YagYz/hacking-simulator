@@ -21,6 +21,7 @@ def yardim_menusu():
     print("\n\033[1;36m[ AŞAMA 2: ERİŞİM VE SÖMÜRÜ ]\033[0m")
     print(f"  \033[1;32mbypass <ip> <port>\033[0m   : WAF/Firewall engelini etkisiz hale getirir.")
     print(f"  \033[1;32mexploit <ip> <port> <CVE>\033[0m: Bulunan zafiyeti sömürerek root erişimi alır.")
+    print(f"  \033[1;32mhydra\033[0m        : [hydra <ip> <user>] Marketten alınan kitle kaba kuvvet saldırısı yapar.")
     
     print("\n\033[1;36m[ AŞAMA 3: SİSTEME GİRİŞ & OPERASYON ]\033[0m")
     print(f"  \033[1;32mssh <user>@<ip>\033[0m      : Exploit edilmiş sisteme terminal bağlantısı kurar.")
@@ -293,7 +294,7 @@ def baslat():
             print(f"\n\033[1;31m[!] DİKKAT: Exploit başlatılıyor! Hedef: {ip}:{port}\033[0m")
             print(f"\033[1;35m[*] GPU Tier {gpu_tier} aktif. Payload paketleri hazırlanıyor...\033[0m")
             
-            # Dinamik İlerleme Barı (Nmap ile uyumlu tasarım)
+            # Dinamik İlerleme Barı
             bar_uzunluk = 25
             for i in range(bar_uzunluk + 1):
                 yuzde = int((i / bar_uzunluk) * 100)
@@ -305,46 +306,128 @@ def baslat():
 
             hedef_data = next((h for h in hedefler if h["hedef_ip"] == ip), None)
             
-            # Hata çözümü: 'port' yerine 'acik_portlar' listesini kontrol ediyoruz
             if hedef_data and port in [str(p) for p in hedef_data.get('acik_portlar', [])]:
                 
-                # Zafiyet (CVE) kontrolü
                 gercek_cve = hedef_data.get('zafiyetler', {}).get(port)
                 
                 if gercek_cve == cve:
                     if ip not in sömürülen_sistemler: sömürülen_sistemler.append(ip)
                     
-                    print(f"\033[1;32m[+] SUCCESS: Exploit başarıyla tamamlandı.\033[0m")
-                    print(f"\033[1;32m[+] CVE: {cve} açığı üzerinden sızıldı.\033[0m")
-                    
+                    # Kullanıcı adını JSON'dan çekiyoruz
                     kullanici = hedef_data.get('kullanici_adi', 'root')
-                    sifre = hedef_data.get('sifre', 'unknown')
-                    print(f"\033[1;33m[*] HASH DUMP: Sistemden kimlik bilgileri çekiliyor...\033[0m")
-                    time.sleep(1)
-                    print(f"\033[1;36m[+] KİMLİK BULUNDU -> Kullanıcı: {kullanici} | Şifre: {sifre}\033[0m")
                     
+                    print(f"\033[1;32m[+] SUCCESS: Exploit başarıyla tamamlandı.\033[0m")
+                    print(f"\033[1;32m[+] CVE: {cve} açığı üzerinden sızıldı ve arka kapı oluşturuldu.\033[0m")
+                    
+                    # Kullanıcı adını oyuncuya sızdırıyoruz (Hydra için gerekli)
+                    print(f"\033[1;36m[+] HEDEF KULLANICI TESPİT EDİLDİ: {kullanici}\033[0m")
+                    
+                    print(f"\033[1;33m[*] SİSTEM NOTU: Şifreyi kırmak için marketten 'hydra.bin' temin edin.\033[0m")
+                    
+                    # Sunucuya sızma bilgisini gönder
                     client_socket.send(f"SIZMA_BASARILI {ip}".encode('utf-8'))
                 else:
                     print(f"\033[1;31m[-] FAILURE: Yanlış CVE kodu! Hedef bu zafiyete karşı korumalı.\033[0m")
                     print(f"\033[1;33m[İpucu] 'vulnscan {ip} {port}' yaparak gerçek açığı öğrenin.\033[0m")
             else:
                 print(f"\033[1;31m[-] FAILURE: Bağlantı hatası! {ip}:{port} üzerinde exploit edilecek açık bir port bulunamadı.\033[0m")
-
-        elif komut == 'ssh':
-            if len(parcalar) < 2 or '@' not in parcalar[1]: continue
-            kullanici, ip = parcalar[1].split('@')
+                
+        elif komut == 'hydra':
+            if len(parcalar) < 3:
+                print("\033[1;31m[!] Kullanım: hydra <hedef_ip> <kullanici_adi>\033[0m")
+                print("\033[1;33m[İpucu] Önce marketten 'hydra.bin' satın almalısınız.\033[0m")
+                continue
+                
+            ip, kullanici_adi = parcalar[1], parcalar[2]
             
-            if ip not in sömürülen_sistemler:
-                print("\033[1;31m[-] Bağlantı reddedildi. Önce zafiyeti exploit etmelisiniz.\033[0m")
+            if not (sandbox.virtual_root / "hydra.bin").exists():
+                print("\033[1;31m[-] HATA: 'hydra.bin' modülü eksik! Lütfen Dark Web Market'ten temin edin.\033[0m")
+                continue
+                
+            s = kayit_oku()["stats"]
+            gpu_tier = s.get("envanter", {}).get("gpu", 0)
+            bekleme = 15 / (1 + (gpu_tier * 1.5))
+            
+            print(f"\n\033[1;35m[*] Hydra v9.1 başlatıldı. Hedef: {ip} (User: {kullanici_adi})\033[0m")
+            print(f"\033[1;33m[*] GPU Tier {gpu_tier} aktif. Wordlist (rockyou.txt) taranıyor...\033[0m")
+            
+            # --- YENİ EŞLEŞTİRME VE ANİMASYON MANTIĞI ---
+            hedef_data = next((h for h in hedefler if h["hedef_ip"] == ip), None)
+            
+            # Hedef ve kullanıcı doğruysa gerçek şifreyi önceden çekiyoruz
+            if hedef_data and hedef_data.get('kullanici_adi') == kullanici_adi:
+                gercek_sifre = hedef_data.get('sifre')
+                basarili = True
+            else:
+                basarili = False
+
+            import random
+            sahte_sifreler = ["123456", "password", "admin", "qwerty", "root123", "iloveyou", "dragon", "toor", "P@ssw0rd"]
+            bar_uzunluk = 20
+            
+            for i in range(bar_uzunluk + 1):
+                yuzde = int((i / bar_uzunluk) * 100)
+                doluluk = "█" * i
+                bosluk = " " * (bar_uzunluk - i)
+                
+                # Eğlenceli kısım: Eğer şifre doğruysa ve bar dolduysa (son adımsa) gerçek şifreyi ekrana bas!
+                if i == bar_uzunluk and basarili:
+                    denenen = gercek_sifre
+                else:
+                    denenen = random.choice(sahte_sifreler)
+                    
+                print(f"\r\033[1;36m    [{doluluk}{bosluk}] %{yuzde} | Deneniyor: {denenen.ljust(15)}\033[0m", end="", flush=True)
+                time.sleep(bekleme / bar_uzunluk)
+            print("\n")
+
+            # --- SONUÇ EKRANI ---
+            if basarili:
+                print(f"\033[1;32m[+] EŞLEŞME BULUNDU! Kriptografik hash çözüldü.\033[0m")
+                print(f"\033[1;32m[+] Kimlik: {kullanici_adi} : {gercek_sifre}\033[0m")
+                print(f"\033[1;33m[*] Artık 'ssh {kullanici_adi}@{ip}' komutuyla bağlanabilirsiniz.\033[0m")
+                
+                if ip not in sömürülen_sistemler: sömürülen_sistemler.append(ip)
+                client_socket.send(f"SIZMA_BASARILI {ip}".encode('utf-8'))
+            else:
+                print(f"\033[1;31m[-] BAŞARISIZ! Wordlist tükendi veya kullanıcı adı yanlış.\033[0m")
+                
+        elif komut.startswith('ssh'):
+            if len(parcalar) < 2 or '@' not in parcalar[1]:
+                print("\033[1;31m[!] Kullanım: ssh kullanici_adi@hedef_ip\033[0m")
+                continue
+                
+            try:
+                hedef = parcalar[1]
+                kullanici, ip = hedef.split('@')
+            except ValueError:
+                print("\033[1;31m[!] Geçersiz format. Doğru kullanım: ssh admin@192.168.1.1\033[0m")
                 continue
             
-            h = next((h for h in hedefler if h.get("hedef_ip") == ip), None)
+            hedef_data = next((h for h in hedefler if h["hedef_ip"] == ip), None)
             
-            if h and kullanici == h.get("kullanici_adi"):
-                # Sandbox modülündeki SSH alt döngüsünü çağırıyoruz!
-                sandbox.ssh_baslat(kullanici, ip, h, client_socket)
+            if not hedef_data:
+                print(f"\033[1;31m[-] HATA: {ip} adresine ulaşılamıyor (Connection timeout).\033[0m")
+                continue
+            
+            # Önce hedefte bu kullanıcı var mı diye kontrol et
+            if hedef_data.get('kullanici_adi') != kullanici:
+                print(f"\033[1;31m[-] HATA: '{kullanici}' kullanıcısı bu sistemde kayıtlı değil.\033[0m")
+                continue
+            
+            # Paşa paşa şifre sorma kısmı
+            girilen_sifre = input(f"\033[1;33m{kullanici}@{ip}'s password: \033[0m")
+            
+            if girilen_sifre == hedef_data.get('sifre'):
+                print(f"\033[1;32m[+] Kimlik doğrulandı. Güvenli tünel (RSA-2048) kuruluyor...\033[0m")
+                time.sleep(1)
                 
-            else: print("\033[1;31mSSH Hatası: Kullanıcı bulunamadı.\033[0m")
+                # Sunucuya giriş bilgisini gönder (Opsiyonel log)
+                client_socket.send(f"SSH_GIRIS {ip} {kullanici}".encode('utf-8'))
+                
+                # Sandbox ortamını başlat
+                sandbox.ssh_baslat(ip, kullanici, hedef_data, client_socket)
+            else:
+                print(f"\033[1;31m[-] Erişim Reddedildi (Permission denied, please try again).\033[0m")
             
         else: print(f"bash: {komut}: komut bulunamadı. (Yardım için 'help' yazın)")
 

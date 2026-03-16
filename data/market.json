@@ -94,6 +94,14 @@
             "dosya": "bypass_pro.py",
             "fiyat": 6000,
             "aciklama": "Bypass komutunun başarı şansını ve hızını artırır."
+        },
+        {
+            "id": "K-HYD",
+            "isim": "Hydra Brute-Force Kit",
+            "tip": "kit",
+            "dosya": "hydra.bin",
+            "fiyat": 3000,
+            "aciklama": "SSH şifrelerini kaba kuvvetle çözer. GPU gücü gerektirir."
         }
     ]
 }
