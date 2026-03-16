@@ -58,7 +58,14 @@ def gorev_tamamla(hedef_ip, eylem, ekstra_bilgi=None):
     if not hedef_data: return
     
     gorev_id = hedef_data["id"]
-    if gorev_id in tamamlanan_gorevler: return 
+    
+    # 1. KONTROL: Oyuncu bu görevi mesajlardan kabul etmiş mi? (Aktif mi?)
+    if gorev_id not in stats.get("aktif_gorevler", []): 
+        return
+        
+    # 2. KONTROL: Zaten tamamlanmış mı?
+    if gorev_id in tamamlanan_gorevler: 
+        return 
         
     if stats["level"] < hedef_data.get("min_level", 1): return
         
@@ -75,6 +82,11 @@ def gorev_tamamla(hedef_ip, eylem, ekstra_bilgi=None):
         stats["bakiye"] += hedef_data["odul"]
         stats["xp"] += hedef_data["xp"]
         tamamlanan_gorevler.append(gorev_id)
+        
+        # Görevi aktifler listesinden çıkar ki "targets" ekranında kalabalık yapmasın
+        if gorev_id in stats.get("aktif_gorevler", []):
+            stats["aktif_gorevler"].remove(gorev_id)
+        
         logs.append(f"[bold green][+] GÖREV BAŞARILI ({gorev_id}): Kripto cüzdana ${hedef_data['odul']} aktarıldı![/bold green]")
         
         if stats["xp"] >= 100:
@@ -85,120 +97,145 @@ def gorev_tamamla(hedef_ip, eylem, ekstra_bilgi=None):
         oyunu_kaydet()
 
 def socket_dinleyici():
-    host = '127.0.0.1'
-    port = 5555
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.bind((host, port))
-    server_socket.listen(1)
-    
-    conn, addr = server_socket.accept()
-    logs.append(f"[bold green][+] Şifreli Tünel Açıldı. Ajan Bağlandı:[/bold green] {addr}")
-    
-    while True:
-        try:
-            data = conn.recv(1024).decode('utf-8')
-            if not data: break
-            
-            if not any(data.startswith(s) for s in ["SIZMA", "TARAMA", "FIREWALL", "DOSYA"]):
-                logs.append(f"[bold cyan]root@yagyz:~#[/bold cyan] {data}")
-            
-            # --- YENİ TEMAYA UYGUN LOG GÜNCELLEMELERİ ---
-            if data.startswith("TARAMA_YAPILDI"):
-                hedef_ip = data.split()[1]
-                logs.append(f"[bold yellow][*] İSTİHBARAT: {hedef_ip} ağ haritası ve port analizi tamamlandı.[/bold yellow]")
-                gorev_tamamla(hedef_ip, "TARAMA_YAPILDI")
+    import traceback # Hataları yakalayıp dosyaya yazmak için
+    try:
+        host = '127.0.0.1'
+        port = 5555
+        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        
+        # [!] İŞTE HAYATİ SATIR: Port kilitlenmesini ve "Address already in use" hatasını kökten çözer
+        server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        
+        server_socket.bind((host, port))
+        server_socket.listen(1)
+        
+        conn, addr = server_socket.accept()
+        logs.append(f"[bold green][+] Şifreli Tünel Açıldı. Ajan Bağlandı:[/bold green] {addr}")
+        
+        while True:
+            try:
+                data = conn.recv(1024).decode('utf-8')
+                if not data: break
                 
-            elif data.startswith("FIREWALL_BYPASS"):
-                parcalar = data.split()
-                hedef_ip, hedef_port = parcalar[1], parcalar[2]
-                logs.append(f"[bold magenta][!] WAF ÇÖKÜŞÜ: {hedef_ip}:{hedef_port} üzerindeki güvenlik duvarı aşıldı![/bold magenta]")
-
-            elif data.startswith("SIZMA_BASARILI"):
-                hedef_ip = data.split()[1]
-                # Log mesajı "Crack" yerine "Exploit/Zafiyet" temasına uygun hale getirildi
-                logs.append(f"[bold yellow][*] EXPLOIT BAŞARILI: {hedef_ip} sistemindeki zafiyet sömürüldü, root erişimi sağlandı.[/bold yellow]")
-                gorev_tamamla(hedef_ip, "SIZMA_BASARILI")
+                # Sadece bizim bildiğimiz komutlar dışındaysa loglara bas
+                if not any(data.startswith(s) for s in ["SIZMA", "TARAMA", "FIREWALL", "DOSYA", "HEAT", "GOREV", "MESAJ", "SATIN_ALMA", "GHOST"]):
+                    logs.append(f"[bold cyan]root@yagyz:~#[/bold cyan] {data}")
                 
-            elif data.startswith("DOSYA_INDIRILDI"):
-                parcalar = data.split()
-                hedef_ip, dosya_adi = parcalar[1], parcalar[2]
-                logs.append(f"[bold cyan][+] VERİ SIZINTISI: {hedef_ip} sunucusundan '{dosya_adi}' başarıyla çekildi.[/bold cyan]")
-                gorev_tamamla(hedef_ip, "DOSYA_INDIRILDI", ekstra_bilgi=dosya_adi)
-                
-            elif data.startswith("HEAT_UPDATE"):
-                deger = int(data.split()[1])
-                stats["heat"] = max(0, min(100, stats.get("heat", 0) + deger))
-                
-                if deger > 0:
-                    logs.append(f"[bold red]!!! POLİS RADARI !!! İz bırakıldı. Aranma Seviyesi Arttı (+{deger})[/bold red]")
-                else:
-                    logs.append(f"[bold cyan][*] GHOST PROTOCOL: Dijital izler temizlendi. ({deger})[/bold cyan]")
-                oyunu_kaydet()
-
-            elif data == "GHOST_PROTOCOL":
-                # Rüşvet / İz silme ödemesi (2500$ karşılığı -50 Heat)
-                if stats["bakiye"] >= 2500:
-                    stats["bakiye"] -= 2500
-                    stats["heat"] = max(0, stats.get("heat", 0) - 50)
-                    logs.append("[bold magenta][*] DarkNet üzerinden temizleyicilere ödeme yapıldı. İzler siliniyor.[/bold magenta]")
-                    oyunu_kaydet()
-                    conn.send("ONAY".encode('utf-8'))
-                else:
-                    conn.send("YETERSIZ".encode('utf-8'))
-                
-            elif data.startswith("MESAJ_OKUNDU"):
-                mesaj_id = data.split()[1]
-                if "okunan_mesajlar" not in stats:
-                    stats["okunan_mesajlar"] = []
-                
-                if mesaj_id not in stats["okunan_mesajlar"]:
-                    stats["okunan_mesajlar"].append(mesaj_id)
-                    oyunu_kaydet() # Diske yaz!
-                    logs.append(f"[bold blue][*] BİLGİ:[/bold blue] {mesaj_id} kodlu şifreli mesaj okundu.")
-                
-            elif data.startswith("SATIN_ALMA"):
-                parcalar = data.split()
-                fiyat = int(parcalar[1])
-                urun_tipi = parcalar[2] # donanim / kit
-                urun_id = parcalar[3]   # H-CPU-1 gibi
-                urun_ismi = " ".join(parcalar[4:])
-                
-                if stats["bakiye"] >= fiyat:
-                    if urun_tipi == "donanim":
-                        # Parça tipini ve tier'ı ID'den veya JSON'dan çekebiliriz
-                        # Basitlik için ID kontrolü:
-                        p_tip = "cpu" if "CPU" in urun_id else "gpu" if "GPU" in urun_id else "ram"
-                        t_seviye = int(urun_id.split('-')[-1]) # Sondaki rakamı al
-                        
-                        # Eğer zaten bu tier veya üstüne sahipse engelle
-                        if stats["envanter"].get(p_tip, 0) >= t_seviye:
-                            conn.send("ZATEN_SAHIP".encode('utf-8'))
-                            continue
-                        
-                        stats["envanter"][p_tip] = t_seviye
-                        stats["donanim"][p_tip] = urun_ismi # Stats ekranı için isim
-                    else:
-                        # Kitler sınırsız alınabilir
-                        if urun_ismi not in stats["donanim"]["kits"]:
-                            stats["donanim"]["kits"].append(urun_ismi)
+                if data.startswith("TARAMA_YAPILDI"):
+                    if len(data.split()) > 1:
+                        hedef_ip = data.split()[1]
+                        logs.append(f"[bold yellow][*] İSTİHBARAT: {hedef_ip} ağ haritası ve port analizi tamamlandı.[/bold yellow]")
+                        gorev_tamamla(hedef_ip, "TARAMA_YAPILDI")
                     
-                    stats["bakiye"] -= fiyat
-                    logs.append(f"[bold green][+] DONANIM GÜNCELLENDİ:[/bold green] {urun_ismi}")
-                    oyunu_kaydet()
-                    conn.send("ONAY".encode('utf-8'))
-                else:
-                    conn.send("YETERSIZ_BAKIYE".encode('utf-8'))
+                elif data.startswith("FIREWALL_BYPASS"):
+                    if len(data.split()) > 2:
+                        hedef_ip, hedef_port = data.split()[1], data.split()[2]
+                        logs.append(f"[bold magenta][!] WAF ÇÖKÜŞÜ: {hedef_ip}:{hedef_port} üzerindeki güvenlik duvarı aşıldı![/bold magenta]")
 
-            elif data == "clear":
-                logs.clear()
-                
-            if len(logs) > 15:
-                logs.pop(0)
-                
-        except Exception as e:
-            logs.append(f"[bold red]Bağlantı koptu:[/bold red] {e}")
-            break
-    conn.close()
+                elif data.startswith("SIZMA_BASARILI"):
+                    if len(data.split()) > 1:
+                        hedef_ip = data.split()[1]
+                        logs.append(f"[bold yellow][*] EXPLOIT BAŞARILI: {hedef_ip} sistemindeki zafiyet sömürüldü, root erişimi sağlandı.[/bold yellow]")
+                        gorev_tamamla(hedef_ip, "SIZMA_BASARILI")
+                    
+                elif data.startswith("DOSYA_INDIRILDI"):
+                    parcalar = data.split()
+                    if len(parcalar) > 2:
+                        hedef_ip, dosya_adi = parcalar[1], parcalar[2]
+                        logs.append(f"[bold cyan][+] VERİ SIZINTISI: {hedef_ip} sunucusundan '{dosya_adi}' başarıyla çekildi.[/bold cyan]")
+                        gorev_tamamla(hedef_ip, "DOSYA_INDIRILDI", ekstra_bilgi=dosya_adi)
+                    
+                elif data.startswith("GOREV_KABUL"):
+                    # Verinin eksik gelme ihtimaline karşı GÜVENLİK
+                    if len(data.split()) > 1:
+                        g_id = data.split()[1]
+                        if "aktif_gorevler" not in stats: stats["aktif_gorevler"] = []
+                        
+                        if g_id not in stats["aktif_gorevler"]:
+                            stats["aktif_gorevler"].append(g_id)
+                            oyunu_kaydet()
+                            logs.append(f"[bold yellow][*] YENİ İŞ ALINDI:[/bold yellow] {g_id} kodlu hedef sisteme yüklendi.")
+                    
+                elif data.startswith("HEAT_UPDATE"):
+                    if len(data.split()) > 1:
+                        deger = int(data.split()[1])
+                        stats["heat"] = max(0, min(100, stats.get("heat", 0) + deger))
+                        
+                        if deger > 0:
+                            logs.append(f"[bold red]!!! POLİS RADARI !!! İz bırakıldı. Aranma Seviyesi Arttı (+{deger})[/bold red]")
+                        else:
+                            logs.append(f"[bold cyan][*] GHOST PROTOCOL: Dijital izler temizlendi. ({deger})[/bold cyan]")
+                        oyunu_kaydet()
+
+                elif data == "GHOST_PROTOCOL":
+                    if stats["bakiye"] >= 2500:
+                        stats["bakiye"] -= 2500
+                        stats["heat"] = max(0, stats.get("heat", 0) - 50)
+                        logs.append("[bold magenta][*] DarkNet üzerinden temizleyicilere ödeme yapıldı. İzler siliniyor.[/bold magenta]")
+                        oyunu_kaydet()
+                        conn.send("ONAY".encode('utf-8'))
+                    else:
+                        conn.send("YETERSIZ".encode('utf-8'))
+                    
+                elif data.startswith("MESAJ_OKUNDU"):
+                    if len(data.split()) > 1:
+                        mesaj_id = data.split()[1]
+                        if "okunan_mesajlar" not in stats: stats["okunan_mesajlar"] = []
+                        
+                        if mesaj_id not in stats["okunan_mesajlar"]:
+                            stats["okunan_mesajlar"].append(mesaj_id)
+                            oyunu_kaydet() 
+                            logs.append(f"[bold blue][*] BİLGİ:[/bold blue] {mesaj_id} kodlu şifreli mesaj okundu.")
+                    
+                elif data.startswith("SATIN_ALMA"):
+                    parcalar = data.split()
+                    if len(parcalar) >= 4:
+                        fiyat = int(parcalar[1])
+                        urun_tipi = parcalar[2] 
+                        urun_id = parcalar[3]   
+                        urun_ismi = " ".join(parcalar[4:])
+                        
+                        if stats["bakiye"] >= fiyat:
+                            if urun_tipi == "donanim":
+                                p_tip = "cpu" if "CPU" in urun_id else "gpu" if "GPU" in urun_id else "ram"
+                                t_seviye = int(urun_id.split('-')[-1]) 
+                                
+                                if stats["envanter"].get(p_tip, 0) >= t_seviye:
+                                    conn.send("ZATEN_SAHIP".encode('utf-8'))
+                                    continue
+                                
+                                stats["envanter"][p_tip] = t_seviye
+                                stats["donanim"][p_tip] = urun_ismi 
+                            else:
+                                if urun_ismi not in stats["donanim"]["kits"]:
+                                    stats["donanim"]["kits"].append(urun_ismi)
+                            
+                            stats["bakiye"] -= fiyat
+                            logs.append(f"[bold green][+] DONANIM GÜNCELLENDİ:[/bold green] {urun_ismi}")
+                            oyunu_kaydet()
+                            conn.send("ONAY".encode('utf-8'))
+                        else:
+                            conn.send("YETERSIZ_BAKIYE".encode('utf-8'))
+
+                elif data == "clear":
+                    logs.clear()
+                    
+                if len(logs) > 15:
+                    logs.pop(0)
+                    
+            except Exception as e:
+                # İÇERİDE HATA OLURSA SUNUCU ÇÖKMESİN! Hatayı dosyaya yazsın ve devam etsin.
+                hata_kaydi = traceback.format_exc()
+                logs.append(f"[bold red]VERİ İŞLEME HATASI:[/bold red] Lütfen 'hata_raporu.txt' dosyasına bakın.")
+                with open("hata_raporu.txt", "a") as f:
+                    f.write(hata_kaydi + "\n")
+                continue # Döngüyü kırmak (break) yerine devam et!
+
+    except Exception as e:
+        # Sunucu tamamen çökerse sebebini dosyaya yaz
+        hata_kaydi = traceback.format_exc()
+        with open("hata_raporu.txt", "a") as f:
+            f.write("SUNUCU ÇÖKMESİ:\n" + hata_kaydi + "\n")
 
 def ekrani_olustur():
     layout = Layout()
@@ -237,10 +274,19 @@ def ekrani_olustur():
         stats_text += f" [white]KİTLER:[/white] {kit_liste}\n"
     
     stats_text += "\n[bold magenta]DarkNet Görev Panosu:[/bold magenta]\n"
+    
+    # Sadece aktif (kabul edilmiş ama henüz bitmemiş) görevleri çekiyoruz
+    aktifler = stats.get("aktif_gorevler", [])
+    
+    gosterilen_gorev_sayisi = 0
     for h in hedefler:
-        durum = "[bold green][x][/bold green]" if h["id"] in tamamlanan_gorevler else "[white][ ][/white]"
-        kilit = "[bold red](KİLİTLİ)[/bold red] " if stats["level"] < h.get("min_level", 1) else ""
-        stats_text += f"{durum} {kilit}{h['baslik'][:20]}\n"
+        # Eski koddaki 'or h["id"] in tamamlanan_gorevler' kısmını SİLDİK!
+        if h["id"] in aktifler:
+            gosterilen_gorev_sayisi += 1
+            stats_text += f"[bold cyan][>][/bold cyan] {h['baslik'][:28]}\n"
+            
+    if gosterilen_gorev_sayisi == 0:
+        stats_text += "[dim]Henüz aktif bir operasyon yok. Gelen kutunu ('chat') kontrol et.[/dim]\n"
     
     # Rich Panel artık uzunluğu otomatik ve doğru hesaplayacak
     layout["stats"].update(Panel(stats_text, title="[ Sistem & Oyuncu Statüsü ]", border_style="green"))

@@ -5,21 +5,24 @@
             "gonderen": "Anonim_Rehber",
             "konu": "YagYz Ağına Hoş Geldin",
             "trigger": {"tip": "baslangic", "deger": "none"},
-            "icerik": "Selam. YagYz C2 sistemine giriş yaptığını görüyorum. İlk iş olarak mahalle bakkalının ağına nmap atarak paslanıp paslanmadığını görelim."
+            "gorev_id": "M-001",
+            "icerik": "Selam. Sistemlerinin çalıştığını test edelim. Ekteki dosyada ilk hedefin var. Bakkalın ağını tara."
         },
         {
             "id": "MSG-02",
-            "gonderen": "ShadowBroker",
-            "konu": "Kaba Kuvvet Gerekli",
-            "trigger": {"tip": "seviye", "deger": 2},
-            "icerik": "İyi gidiyorsun. Ama her sistemde açık bulamazsın. Dark Web Market'e girip Hydra Brute-Force kitini satın al. Şifreleri kırmak için ona ihtiyacımız olacak."
+            "gonderen": "Cyber_Guard_Ltd",
+            "konu": "Acemi Hırsız Bize Dert Oldu",
+            "trigger": {"tip": "gorev_tamamlandi", "deger": "M-001"},
+            "gorev_id": "M-002",
+            "icerik": "Anonim_Rehber senin iş bitirici biri olduğunu söyledi. Hedefteki sunucuya sız. Detaylar ekte."
         },
         {
             "id": "MSG-03",
             "gonderen": "ShadowBroker",
-            "konu": "Hydra Aktif Edildi!",
-            "trigger": {"tip": "esya", "deger": "hydra.bin"},
-            "icerik": "Alet çantana Hydra'yı eklediğini sistemlerimden gördüm. Harika yatırım! Şimdi 'hydra <ip> <user>' komutuyla o kırılamaz denen şifreleri parçalama vakti."
+            "konu": "Karanlık Veri",
+            "trigger": {"tip": "gorev_tamamlandi", "deger": "M-002"},
+            "gorev_id": "M-003",
+            "icerik": "Şirket işlerini hallettiğini duydum. Şimdi büyük lige çıkıyoruz. Veritabanını patlat ve dosyayı bana getir."
         }
     ]
 }

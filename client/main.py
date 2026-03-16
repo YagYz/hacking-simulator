@@ -30,7 +30,7 @@ def yardim_menusu():
     print(f"  \033[1;33m  > rm <dosya>\033[0m       : (SSH İçinde) İzleri silmek için logları temizler.")
     
     print("\n\033[1;36m[ YEREL TERMİNAL & YÖNETİM ]\033[0m")
-    print(f"  \033[1;32mmissions\033[0m             : Seviyene uygun güncel DarkNet işlerini listeler.")
+    print("  \033[1;32mtargets\033[0m      : Kabul edilen aktif operasyonların detaylarını ve hedeflerin IP'lerini gösterir.")
     print(f"  \033[1;32maccept <id>\033[0m          : Bir görevi kabul eder ve brifingi görüntüler.")
     print(f"  \033[1;32mls / cd / rm\033[0m         : Kendi sanal makinenizde dosya yönetimi yapar.")
     print(f"  \033[1;32mnano\033[0m                 : İstihbarat notlarını düzenlemek için editörü açar.")
@@ -107,19 +107,6 @@ def baslat():
             os.system(f'nano {NOTES_YOLU}')
             ekrani_temizle()
             banner_yazdir()
-
-        elif komut == 'missions':
-            kayit = kayit_oku()
-            tamamlananlar = kayit.get("tamamlanan_gorevler", [])
-            level = kayit.get("stats", {}).get("level", 1)
-            uygun_gorevler = [h for h in hedefler if h["id"] not in tamamlananlar and h.get("min_level", 1) <= level]
-            
-            print("\033[1;35m\n=== AKTİF DARKNET GÖREV PANOSU ===\033[0m")
-            if not uygun_gorevler: print("\033[1;33m[!] Şu anda sana uygun yeni bir görev yok.\033[0m\n")
-            else:
-                for h in uygun_gorevler[:3]:
-                    print(f"\033[1;33m[{h['id']}]\033[0m {h['baslik']} (Hedef: {h['hedef_ip']}) - Ödül: ${h['odul']}")
-                print()
 
         elif komut == 'accept':
             if len(parcalar) < 2: 
@@ -266,6 +253,7 @@ def baslat():
                 
                 # Sunucuya log gönder
                 client_socket.send(f"TARAMA_YAPILDI {hedef_ip}".encode('utf-8'))
+                time.sleep(0.1)
                 client_socket.send("HEAT_UPDATE 5".encode('utf-8'))
                 print("\033[1;34m\nNmap done: 1 IP address (1 host up) scanned.\033[0m")
             else:
@@ -352,6 +340,7 @@ def baslat():
                     
                     # Sunucuya sızma bilgisini gönder
                     client_socket.send(f"SIZMA_BASARILI {ip}".encode('utf-8'))
+                    time.sleep(0.1)
                     client_socket.send("HEAT_UPDATE 15".encode('utf-8'))
                 else:
                     print(f"\033[1;31m[-] FAILURE: Yanlış CVE kodu! Hedef bu zafiyete karşı korumalı.\033[0m")
@@ -415,6 +404,7 @@ def baslat():
                 
                 if ip not in sömürülen_sistemler: sömürülen_sistemler.append(ip)
                 client_socket.send("HEAT_UPDATE 20".encode('utf-8'))
+                time.sleep(0.1)
                 client_socket.send(f"SIZMA_BASARILI {ip}".encode('utf-8'))
             else:
                 print(f"\033[1;31m[-] BAŞARISIZ! Wordlist tükendi veya kullanıcı adı yanlış.\033[0m")
@@ -433,6 +423,40 @@ def baslat():
                 print("\033[1;32m[+] 2500$ transfer edildi. Siber polis hedeften saptırıldı (-50 Heat).\033[0m")
             else:
                 print("\033[1;31m[-] HATA: Rüşvet için yeterli bakiyen yok!\033[0m")
+                
+        elif komut == 'targets':
+            aktifler = guncel_stats.get("aktif_gorevler", [])
+            tamamlananlar = kayit_oku().get("tamamlanan_gorevler", []) # Güncel tamamlananları çek
+            
+            # Sadece kabul edilmiş VE henüz tamamlanmamış görevleri filtrele
+            devam_edenler = [g for g in aktifler if g not in tamamlananlar]
+            
+            if not devam_edenler:
+                print("\033[1;33m[*] Şu anda aktif bir operasyonunuz yok. YagYz Messenger'ı ('chat') kontrol edin.\033[0m")
+                continue
+                
+            print("\n\033[1;36m" + "="*55)
+            print("       [ AKTİF HEDEFLER VE OPERASYON DOSYALARI ]")
+            print("="*55 + "\033[0m")
+            
+            for g_id in devam_edenler:
+                hedef_data = next((h for h in hedefler if h["id"] == g_id), None)
+                if hedef_data:
+                    print(f"\n\033[1;32m[+] HEDEF KODU : {hedef_data['id']}\033[0m")
+                    print(f"\033[1;37m BAŞLIK     : {hedef_data['baslik']}")
+                    print(f" MÜŞTERİ    : {hedef_data['veren_kisi']}")
+                    print(f" HEDEF IP   : \033[1;31m{hedef_data['hedef_ip']}\033[1;37m")
+                    
+                    # İstenen eylemi daha şık yazdıralım
+                    istek = hedef_data.get('istenen_eylem', '').replace('_', ' ').title()
+                    if istek == "Dosya Indirildi":
+                        istek += f" ({hedef_data.get('istenen_dosya', 'Bilinmiyor')})"
+                        
+                    print(f" GÖREV      : {istek}")
+                    print(f" ÖDÜL       : ${hedef_data['odul']} | XP: {hedef_data['xp']}")
+                    print(f"\033[1;30m-"*55 + "\033[0m")
+                    print(f"\033[1;37m İSTİHBARAT : {hedef_data['hikaye']}\033[0m")
+                    print("\033[1;36m" + "="*55 + "\033[0m")
                 
         elif komut.startswith('ssh'):
             if len(parcalar) < 2 or '@' not in parcalar[1]:
